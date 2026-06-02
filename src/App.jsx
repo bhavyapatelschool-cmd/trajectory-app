@@ -194,6 +194,8 @@ const I = {
   check:   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 8l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   edit:    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg>,
   camera:  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M1 5.5h14v8H1zM10.5 5.5l-1.5-3h-2l-1.5 3"/><circle cx="8" cy="10" r="2.2"/></svg>,
+  copy:    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M6 4V2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H12" strokeLinecap="round"/></svg>,
+  refresh: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 2.5v4h-4M3 13.5v-4h4" strokeLinecap="round"/><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" strokeLinecap="round"/></svg>,
 };
 
 // ─── CSS ─────────────────────────────────────────────────────────────────────
@@ -476,9 +478,44 @@ body{background:var(--bg);color:var(--tx);font-family:'Geist',-apple-system,Blin
 .starter{padding:7px 14px;border-radius:7px;border:1px solid var(--bd);background:transparent;font-size:12px;font-weight:400;color:var(--tx2);cursor:pointer;transition:all .12s;font-family:inherit;}
 .starter:hover{border-color:var(--bdh);color:var(--tx);background:var(--ac);}
 
+/* NEW: Loading indicator for AI thinking */
+.thinking-indicator{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--sf2);border-radius:12px;width:fit-content;}
+.thinking-dots{display:flex;gap:4px;}
+.thinking-dots span{width:6px;height:6px;border-radius:50%;background:var(--tx2);animation:thinkingBounce 1.4s infinite ease-in-out both;}
+.thinking-dots span:nth-child(1){animation-delay:-0.32s;}
+.thinking-dots span:nth-child(2){animation-delay:-0.16s;}
+@keyframes thinkingBounce{0%,80%,100%{transform:scale(0);opacity:0.3;}40%{transform:scale(1);opacity:1;}}
+.thinking-text{font-size:12px;color:var(--tx2);}
+
+/* NEW: Message actions (hover effects) */
+.message-actions{display:flex;gap:6px;opacity:0;transition:opacity 0.2s ease;margin-top:6px;}
+.mrow:hover .message-actions{opacity:1;}
+.message-action-btn{background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--tx2);transition:all 0.15s;display:inline-flex;align-items:center;gap:4px;font-size:11px;}
+.message-action-btn:hover{background:var(--ach);border-color:var(--bdh);color:var(--tx);}
+.message-action-btn svg{width:12px;height:12px;}
+.message-action-btn.copied{background:var(--blbg);border-color:var(--blbd);color:var(--bl);}
+
+/* NEW: Toast notification */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--tx);z-index:1000;animation:toastIn 0.3s ease,toastOut 0.3s ease 2s forwards;pointer-events:none;}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+@keyframes toastOut{to{opacity:0;transform:translateX(-50%) translateY(-20px);}}
+
+/* Regenerate specific button */
+.regenerate-btn{padding:4px 8px;background:var(--sf2);border:1px solid var(--bd);border-radius:6px;cursor:pointer;color:var(--tx2);font-size:11px;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;}
+.regenerate-btn:hover{background:var(--blbg);border-color:var(--blbd);color:var(--bl);}
+.regenerating{opacity:0.6;pointer-events:none;}
+
+/* Improved loading state */
+.loading-dots{display:flex;gap:8px;align-items:center;padding:12px;}
+.loading-dots span{width:8px;height:8px;border-radius:50%;background:var(--tx3);animation:loadingWave 1.2s infinite ease-in-out;}
+.loading-dots span:nth-child(1){animation-delay:-0.40s;}
+.loading-dots span:nth-child(2){animation-delay:-0.20s;}
+.loading-dots span:nth-child(3){animation-delay:0s;}
+@keyframes loadingWave{0%,60%,100%{transform:scale(0.4);opacity:0.3;}30%{transform:scale(1.2);opacity:1;}}
+
 .mrow{padding:var(--mp) 0;animation:msgIn .2s ease;}
 @keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-.mrow-in{max-width:720px;margin:0 auto;padding:0 24px;display:flex;gap:12px;}
+.mrow-in{max-width:720px;margin:0 auto;padding:0 24px;display:flex;gap:12px;position:relative;}
 .mrow.user .mrow-in{flex-direction:row-reverse;}
 .av{width:26px;height:26px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;margin-top:2px;}
 .av.ai{background:var(--sf2);border:1px solid var(--bd);color:var(--tx2);}
@@ -596,6 +633,15 @@ function StreamingBubble({ text }) {
   );
 }
 
+// ─── TOAST COMPONENT ─────────────────────────────────────────────────────────
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return <div className="toast">{message}</div>;
+}
+
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
   // THEME & SETTINGS
@@ -654,6 +700,14 @@ export default function App() {
   const [qcText, setQcText]                   = useState("");
   const [totalConvs, setTotalConvs]           = useState(0);
   const [totalMsgs, setTotalMsgs]             = useState(0);
+  
+  // NEW: Toast notification state
+  const [toast, setToast] = useState(null);
+  // NEW: Regenerating state
+  const [regenerating, setRegenerating] = useState(false);
+  // NEW: Track last user message for regeneration
+  const [lastUserMessage, setLastUserMessage] = useState(null);
+  const [lastAssistantMessageId, setLastAssistantMessageId] = useState(null);
 
   const endRef   = useRef(null);
   const taRef    = useRef(null);
@@ -670,7 +724,20 @@ export default function App() {
 
   const sfx = useCallback((type) => { if (custToggles.sounds) playTone(type); }, [custToggles.sounds]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [msgs, streaming, streamTxt]);
+  // Helper: Show toast notification
+  const showToast = useCallback((message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  // Helper: Copy to clipboard
+  const copyToClipboard = useCallback((text) => {
+    navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard!");
+    sfx("click");
+  }, [showToast, sfx]);
+
+  useEffect(() => { if (custToggles.autoScroll) endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [msgs, streaming, streamTxt, custToggles.autoScroll]);
 
   useEffect(() => {
     if (!authed) return;
@@ -690,6 +757,8 @@ export default function App() {
     setCid(id); setPendingConvId(id);
     setShowLevelPicker(true); setErr(""); setView("chat");
     setTotalConvs(n => n+1);
+    setLastUserMessage(null);
+    setLastAssistantMessageId(null);
     sfx("click");
   }, [sfx]);
 
@@ -747,36 +816,62 @@ export default function App() {
     } catch { setErr("Microphone access denied."); }
   };
 
-  // SEND - UPDATED FOR GROQ CLOUDFLARE WORKER
-  const send = async (text) => {
+  // Core send function (can be called with a custom message, for regeneration)
+  const send = async (text, isRegenerate = false, originalUserMessage = null) => {
     const t2 = (text ?? inp).trim();
-    if ((!t2 && attachedFiles.length===0) || streaming) return;
-    if (credits < 5) { setErr("Out of credits. Replenishing shortly."); return; }
-    setInp(""); setErr("");
-    if (taRef.current) taRef.current.style.height = "auto";
-    sfx("send");
+    if ((!t2 && attachedFiles.length===0 && !isRegenerate) || streaming || regenerating) return;
+    if (credits < 5 && !isRegenerate) { setErr("Out of credits. Replenishing shortly."); return; }
+    
+    if (!isRegenerate) {
+      setInp(""); setErr("");
+      if (taRef.current) taRef.current.style.height = "auto";
+      sfx("send");
+    } else {
+      setRegenerating(true);
+    }
 
     const fileSnap = [...attachedFiles];
-    setAttachedFiles([]);
+    if (!isRegenerate) setAttachedFiles([]);
 
-    const userMsg = { role:"user", content:t2||(fileSnap[0]?.name||"File"), files:fileSnap };
-    let histMsgs;
-    updateConv(cid, c => {
-      histMsgs = [...c.msgs, userMsg];
-      const title = c.msgs.length===0 ? (t2||fileSnap[0]?.name||"File").slice(0,40)+"…" : c.title;
-      return { ...c, msgs:histMsgs, title };
-    });
+    let userMsg, histMsgs;
+    
+    if (isRegenerate && originalUserMessage) {
+      // For regeneration: we need to replace the last assistant message
+      userMsg = originalUserMessage;
+      histMsgs = [...(conv?.msgs || [])];
+      // Remove the last assistant message if it exists
+      if (histMsgs.length > 0 && histMsgs[histMsgs.length - 1].role === "assistant") {
+        histMsgs.pop();
+      }
+      // Add the user message back if it's not already the last
+      if (histMsgs[histMsgs.length - 1]?.role !== "user") {
+        histMsgs.push(userMsg);
+      }
+    } else {
+      userMsg = { role:"user", content:t2||(fileSnap[0]?.name||"File"), files:fileSnap };
+      updateConv(cid, c => {
+        histMsgs = [...c.msgs, userMsg];
+        const title = c.msgs.length===0 ? (t2||fileSnap[0]?.name||"File").slice(0,40)+"…" : c.title;
+        return { ...c, msgs:histMsgs, title };
+      });
+      
+      // Store last user message for potential regeneration
+      setLastUserMessage(userMsg);
+    }
 
     const newMsgCount = msgCount + 1;
-    setMsgCount(newMsgCount);
-    setTotalMsgs(n => n+1);
+    if (!isRegenerate) {
+      setMsgCount(newMsgCount);
+      setTotalMsgs(n => n+1);
+    }
 
-    // CREDIT DEDUCTION
-    const baseCost = Math.max(800, Math.round(
-      (t2.length * 2 + fileSnap.length * 800) * model.costMult * (1 + newMsgCount * 0.15)
-    ));
-    const clampedCost = Math.min(baseCost, 8000);
-    setCredits(c => Math.max(0, c - clampedCost));
+    if (!isRegenerate) {
+      const baseCost = Math.max(800, Math.round(
+        (t2.length * 2 + fileSnap.length * 800) * model.costMult * (1 + newMsgCount * 0.15)
+      ));
+      const clampedCost = Math.min(baseCost, 8000);
+      setCredits(c => Math.max(0, c - clampedCost));
+    }
 
     setStream(true); setStreamTxt("");
 
@@ -784,8 +879,7 @@ export default function App() {
       abortRef.current = new AbortController();
       const convLvl = LEVELS[conv?.levelIdx ?? lvl];
       
-      // Format messages for Groq
-      const apiMsgs = (histMsgs ?? [...msgs, userMsg]).map(m => ({
+      const apiMsgs = histMsgs.map(m => ({
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content
       }));
@@ -793,7 +887,6 @@ export default function App() {
       const systemPrompt = buildSystem(convLvl, memory, tone, fileSnap);
       const fullMessages = [{ role: "system", content: systemPrompt }, ...apiMsgs];
 
-      // Call your Cloudflare worker (not Anthropic)
       const response = await fetch("https://trajectorygroq.trajectory-group.workers.dev", {
         method: "POST",
         signal: abortRef.current.signal,
@@ -813,24 +906,53 @@ export default function App() {
       const data = await response.json();
       const fullResponse = data.choices[0].message.content;
 
-      // Output cost
-      const outCost = Math.max(500, Math.round(fullResponse.length * 0.8 * model.costMult));
-      setCredits(c => Math.max(0, c - outCost));
+      if (!isRegenerate) {
+        const outCost = Math.max(500, Math.round(fullResponse.length * 0.8 * model.costMult));
+        setCredits(c => Math.max(0, c - outCost));
+      }
 
       sfx("receive");
-      updateConv(cid, c => ({ ...c, msgs:[...c.msgs,{role:"assistant",content:fullResponse}] }));
+      
+      if (isRegenerate) {
+        // Replace the last message (remove old assistant, add new one)
+        updateConv(cid, c => {
+          const newMsgs = [...c.msgs];
+          // Remove last message if it's assistant
+          if (newMsgs.length > 0 && newMsgs[newMsgs.length - 1].role === "assistant") {
+            newMsgs.pop();
+          }
+          return { ...c, msgs: [...newMsgs, { role: "assistant", content: fullResponse }] };
+        });
+        setRegenerating(false);
+        showToast("Response regenerated!");
+      } else {
+        updateConv(cid, c => ({ ...c, msgs:[...c.msgs,{role:"assistant",content:fullResponse}] }));
+        // Store the ID of the new assistant message for regeneration tracking
+        setLastAssistantMessageId(Date.now());
+      }
 
     } catch(e) {
       if (e.name !== "AbortError") {
         setErr(e.message || "Something went wrong.");
-        console.error("Send error:", e);
+        showToast("Error: " + (e.message || "Something went wrong"));
       }
+      if (isRegenerate) setRegenerating(false);
     } finally {
       setStream(false); 
       setStreamTxt("");
       abortRef.current = null;
+      if (!isRegenerate) {
+        // Clear attached files after send
+        setAttachedFiles([]);
+      }
     }
   };
+
+  // Regenerate function
+  const regenerate = useCallback(() => {
+    if (!lastUserMessage || regenerating || streaming) return;
+    send(null, true, lastUserMessage);
+  }, [lastUserMessage, regenerating, streaming, send]);
 
   // AVATAR
   const handleAvatar = (e) => {
@@ -847,6 +969,73 @@ export default function App() {
 
   const filteredConvs = convs.filter(c => c.msgs.length>0 && c.title.toLowerCase().includes(searchQ.toLowerCase()));
   const initials = (userName?.slice(0,2) || "US").toUpperCase();
+
+  // Message component with actions
+  const Message = ({ message, index, isLast }) => {
+    const isUser = message.role === "user";
+    const [copied, setCopied] = useState(false);
+    
+    const handleCopy = () => {
+      copyToClipboard(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+    
+    const handleRegenerate = () => {
+      if (!isLast && !isUser) return;
+      if (isLast && !isUser) {
+        regenerate();
+      }
+    };
+    
+    return (
+      <div className={`mrow ${isUser ? "user" : "ai"}`}>
+        <div className="mrow-in">
+          <div className={`av ${isUser ? "user" : "ai"}`}>{isUser ? initials.slice(0,1) : "T"}</div>
+          <div className="mcol">
+            <div className="msender">{isUser ? userName : "Trajectory"}</div>
+            {!isUser ? (
+              <div className="mbubble" dangerouslySetInnerHTML={{ __html: renderMD(message.content) }} />
+            ) : (
+              <div className="mbubble">{message.content}</div>
+            )}
+            {message.files?.length > 0 && (
+              <div className="attach-row">
+                {message.files.map((f, fi) => (
+                  <div key={fi} className="attach-chip">
+                    {f.type?.startsWith("image/") ? I.image : I.doc}
+                    {f.name.length > 22 ? f.name.slice(0, 20) + "…" : f.name}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Message Actions - only show for assistant messages that are last */}
+            {!isUser && isLast && (
+              <div className="message-actions">
+                <button className={`message-action-btn ${copied ? "copied" : ""}`} onClick={handleCopy} title="Copy response">
+                  {I.copy}
+                  <span>Copy</span>
+                </button>
+                <button className="message-action-btn" onClick={handleRegenerate} title="Regenerate response" disabled={regenerating}>
+                  {I.refresh}
+                  <span>Regenerate</span>
+                </button>
+              </div>
+            )}
+            {/* Show actions for user messages too (without regenerate) */}
+            {isUser && (
+              <div className="message-actions">
+                <button className="message-action-btn" onClick={handleCopy} title="Copy message">
+                  {I.copy}
+                  <span>Copy</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ── AUTH SCREEN ───────────────────────────────────────────────────────────────
   if (!authed) {
@@ -907,6 +1096,9 @@ export default function App() {
     <>
       <style>{makeCSS(th,fontSize,density)}</style>
       {showLevelPicker && <LevelPicker />}
+      
+      {/* Toast Notification */}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
       {/* QUICK CAPTURE */}
       <button className="qc-btn" onClick={()=>setQuickCapture(o=>!o)} title="Quick capture">{I.capture}</button>
@@ -1045,28 +1237,7 @@ export default function App() {
                 ):(
                   <>
                     {msgs.map((m,i)=>(
-                      <div key={i} className={`mrow ${m.role==="user"?"user":"ai"}`}>
-                        <div className="mrow-in">
-                          <div className={`av ${m.role==="user"?"user":"ai"}`}>{m.role==="user"?initials.slice(0,1):"T"}</div>
-                          <div className="mcol">
-                            <div className="msender">{m.role==="user"?userName:"Trajectory"}</div>
-                            {m.role==="assistant"
-                              ?<div className="mbubble" dangerouslySetInnerHTML={{__html:renderMD(m.content)}}/>
-                              :<div className="mbubble">{m.content}</div>
-                            }
-                            {m.files?.length>0&&(
-                              <div className="attach-row">
-                                {m.files.map((f,fi)=>(
-                                  <div key={fi} className="attach-chip">
-                                    {f.type?.startsWith("image/")?I.image:I.doc}
-                                    {f.name.length>22?f.name.slice(0,20)+"…":f.name}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <Message key={i} message={m} index={i} isLast={i === msgs.length - 1 && !streaming} />
                     ))}
                     {streaming&&(
                       <div className="mrow ai">
@@ -1076,8 +1247,35 @@ export default function App() {
                             <div className="msender">Trajectory</div>
                             {streamTxt
                               ? <StreamingBubble text={streamTxt}/>
-                              : <div className="dots"><span/><span/><span/></div>
+                              : (
+                                <div className="thinking-indicator">
+                                  <div className="thinking-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                  </div>
+                                  <span className="thinking-text">Thinking...</span>
+                                </div>
+                              )
                             }
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {regenerating && (
+                      <div className="mrow ai">
+                        <div className="mrow-in">
+                          <div className="av ai">T</div>
+                          <div className="mcol">
+                            <div className="msender">Trajectory</div>
+                            <div className="thinking-indicator">
+                              <div className="thinking-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                              </div>
+                              <span className="thinking-text">Regenerating...</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1104,7 +1302,7 @@ export default function App() {
                     <textarea ref={taRef} placeholder="Message Trajectory…" value={inp} rows={1}
                       onChange={e=>{setInp(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,160)+"px";}}
                       onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!conv)startNew();else send();}}}/>
-                    <button className="send-btn" onClick={()=>conv?send():startNew()} disabled={(!inp.trim()&&attachedFiles.length===0)||streaming}>
+                    <button className="send-btn" onClick={()=>conv?send():startNew()} disabled={(!inp.trim()&&attachedFiles.length===0)||streaming||regenerating}>
                       {I.send}
                     </button>
                   </div>
