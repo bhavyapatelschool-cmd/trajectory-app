@@ -719,7 +719,7 @@ export default function App() {
 
   const th    = THEMES[theme];
   const level = LEVELS[lvl];
-  const conv  = convs.find(c => c.id === cid);
+  const conv = convs.find(c => c.id === cid) || { id: null, title: "New conversation", msgs: [], levelIdx: null };
   const msgs  = conv?.msgs ?? []; // FIX: default to empty array if conv or msgs undefined
   const openProj = projects.find(p => p.id === openProjId);
 
@@ -834,7 +834,8 @@ export default function App() {
     const fileSnap = [...attachedFiles];
     if (!isRegenerate) setAttachedFiles([]);
 
-    let userMsg, histMsgs;
+    let userMsg;
+    let histMsgs = [];
     
     if (isRegenerate && originalUserMessage) {
       // For regeneration: we need to replace the last assistant message
@@ -849,16 +850,18 @@ export default function App() {
         histMsgs.push(userMsg);
       }
     } else {
-      userMsg = { role:"user", content:t2||(fileSnap[0]?.name||"File"), files:fileSnap };
-      updateConv(cid, c => {
-        histMsgs = [...c.msgs, userMsg];
-        const title = c.msgs.length===0 ? (t2||fileSnap[0]?.name||"File").slice(0,40)+"…" : c.title;
-        return { ...c, msgs:histMsgs, title };
-      });
-      
-      // Store last user message for potential regeneration
-      setLastUserMessage(userMsg);
-    }
+  userMsg = { role:"user", content:t2||(fileSnap[0]?.name||"File"), files:fileSnap };
+  updateConv(cid, c => {
+    // FIX: Ensure c.msgs exists before trying to spread it
+    const existingMsgs = c?.msgs || [];
+    histMsgs = [...existingMsgs, userMsg];
+    const title = existingMsgs.length===0 ? (t2||fileSnap[0]?.name||"File").slice(0,40)+"…" : (c?.title || "New conversation");
+    return { ...c, msgs:histMsgs, title };
+  });
+  
+  // Store last user message for potential regeneration
+  setLastUserMessage(userMsg);
+}
 
     const newMsgCount = msgCount + 1;
     if (!isRegenerate) {
