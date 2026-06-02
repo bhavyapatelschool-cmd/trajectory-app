@@ -102,6 +102,7 @@ function renderMD(raw) {
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 function exportConv(conv) {
+  if (!conv || !conv.msgs) return;
   const lines = [`# ${conv.title}`, `Exported from Trajectory · ${new Date().toLocaleDateString()}`, ""];
   conv.msgs.forEach(m => {
     lines.push(`### ${m.role==="user"?"You":"Trajectory"}`);
@@ -147,13 +148,13 @@ function ModelSel({ model, onChange }) {
   return (
     <div className="mdl-sel" ref={ref}>
       <button className="mdl-btn" onClick={()=>setOpen(o=>!o)}>
-        <span className="mdl-dot"/>{model.label}
+        <span className="mdl-dot"/>{model?.label || "Model"}
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M4 6l4 4 4-4" strokeLinecap="round"/></svg>
       </button>
       {open&&(
         <div className="mdl-drop">
           {MODELS.map(m=>(
-            <div key={m.id} className={`mdl-opt${model.id===m.id?" sel":""}`} onClick={()=>{onChange(m);setOpen(false);}}>
+            <div key={m.id} className={`mdl-opt${model?.id===m.id?" sel":""}`} onClick={()=>{onChange(m);setOpen(false);}}>
               <div className="mo-l">{m.label}</div><div className="mo-d">{m.desc}</div>
             </div>
           ))}
@@ -719,7 +720,7 @@ export default function App() {
   const th    = THEMES[theme];
   const level = LEVELS[lvl];
   const conv  = convs.find(c => c.id === cid);
-  const msgs  = conv?.msgs ?? [];
+  const msgs  = conv?.msgs ?? []; // FIX: default to empty array if conv or msgs undefined
   const openProj = projects.find(p => p.id === openProjId);
 
   const sfx = useCallback((type) => { if (custToggles.sounds) playTone(type); }, [custToggles.sounds]);
@@ -967,13 +968,16 @@ export default function App() {
     </div>
   );
 
-  const filteredConvs = convs.filter(c => c.msgs.length>0 && c.title.toLowerCase().includes(searchQ.toLowerCase()));
+  const filteredConvs = convs.filter(c => c.msgs?.length > 0 && c.title?.toLowerCase().includes(searchQ.toLowerCase()));
   const initials = (userName?.slice(0,2) || "US").toUpperCase();
 
   // Message component with actions
   const Message = ({ message, index, isLast }) => {
-    const isUser = message.role === "user";
+    const isUser = message?.role === "user";
     const [copied, setCopied] = useState(false);
+    
+    // Don't render if message is invalid
+    if (!message || !message.content) return null;
     
     const handleCopy = () => {
       copyToClipboard(message.content);
@@ -1004,13 +1008,13 @@ export default function App() {
                 {message.files.map((f, fi) => (
                   <div key={fi} className="attach-chip">
                     {f.type?.startsWith("image/") ? I.image : I.doc}
-                    {f.name.length > 22 ? f.name.slice(0, 20) + "…" : f.name}
+                    {f.name?.length > 22 ? f.name.slice(0, 20) + "…" : f.name}
                   </div>
                 ))}
               </div>
             )}
             {/* Message Actions - only show for assistant messages that are last */}
-            {!isUser && isLast && (
+            {!isUser && isLast && msgs.length > 0 && (
               <div className="message-actions">
                 <button className={`message-action-btn ${copied ? "copied" : ""}`} onClick={handleCopy} title="Copy response">
                   {I.copy}
@@ -1147,7 +1151,7 @@ export default function App() {
               <div className="sb-sep"/>
               <div className="sb-grp">
                 <div className="sb-lbl">Recent</div>
-                {convs.filter(c=>c.msgs.length>0).slice(0,10).map(c=>(
+                {convs.filter(c=>c.msgs?.length > 0).slice(0,10).map(c=>(
                   <div key={c.id} className={`sr ${cid===c.id&&view==="chat"?"on":""}`}
                     onDoubleClick={()=>{setRenamingId(c.id);setRenameVal(c.title);}}>
                     {I.clock}
@@ -1167,9 +1171,9 @@ export default function App() {
 
             {/* LEVEL PILL */}
             <div className="level-pill" onClick={()=>setView("levels")}>
-              <div className="lbadge">{level.n}</div>
+              <div className="lbadge">{level?.n || "1"}</div>
               <div style={{flex:1,minWidth:0}}>
-                <div className="lname3">{level.name}</div>
+                <div className="lname3">{level?.name || "Starter"}</div>
                 <div className="lsub3">Change level</div>
               </div>
             </div>
@@ -1197,7 +1201,7 @@ export default function App() {
             <span className="tb-title">
               {view==="chat"      ? (conv?.title??"Trajectory")
                :view==="search"  ? "Search"
-               :view==="projects"? (openProj?openProj.name:"Projects")
+               :view==="projects"? (openProj?.name??"Projects")
                :view==="memory"  ? "Memory"
                :view==="levels"  ? "Levels"
                :view==="phil"    ? "Philosophy"
@@ -1225,7 +1229,7 @@ export default function App() {
           {view==="chat"&&(
             <div className="chat">
               <div className="msgs">
-                {(!conv||msgs.length===0)&&!streaming?(
+                {(!conv || msgs.length === 0) && !streaming ? (
                   <div className="empty">
                     <div className="empty-logo">Trajectory.</div>
                     <div className="starters">
@@ -1329,7 +1333,7 @@ export default function App() {
               {filteredConvs.length>0?filteredConvs.map(c=>(
                 <div key={c.id} className="card" style={{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}
                   onClick={()=>{setCid(c.id);setView("chat");}}>
-                  <div><div className="c-h">{c.title}</div><div className="c-p">{c.msgs.length} messages</div></div>
+                  <div><div className="c-h">{c.title}</div><div className="c-p">{c.msgs?.length || 0} messages</div></div>
                   <button className="ib" onClick={e=>{e.stopPropagation();exportConv(c);}}>{I.export2}</button>
                 </div>
               )):searchQ?<div style={{fontSize:13,color:"var(--tx3)",textAlign:"center",paddingTop:32}}>No results for "{searchQ}"</div>
